@@ -1,0 +1,36 @@
+{
+  "name": "project-toeic-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Adaptive TOEIC Prep Platform with AI - Monorepo",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=frontend & npm run start:dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "npm run start:dev --workspace=backend",
+    "build:frontend": "npm run build --workspace=frontend",
+    "build:backend": "npm run build --workspace=backend",
+    "build": "npm run build:backend && npm run build:frontend",
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspace=backend",
+    "db:up": "docker compose up -d postgres redis",
+    "db:down": "docker compose down",
+    "prisma:generate": "npm run prisma:generate --workspace=backend",
+    "prisma:migrate": "npm run prisma:migrate --workspace=backend",
+    "prisma:studio": "npm run prisma:studio --workspace=backend"
+  },
+  "keywords": [
+    "toeic",
+    "nextjs",
+    "nestjs",
+    "postgresql",
+    "redis",
+    "bullmq",
+    "ai"
+  ],
+  "author": "",
+  "license": "MIT"
+}

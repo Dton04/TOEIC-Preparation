@@ -1,0 +1,194 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum ExamType {
+  FULL_MOCK
+  MINI_TEST
+  PART_PRACTICE
+}
+
+enum SubmissionStatus {
+  IN_PROGRESS
+  COMPLETED
+  TIMEOUT
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  fullName     String    @map("full_name")
+  avatarUrl    String?   @map("avatar_url")
+  role         Role      @default(STUDENT)
+  targetScore  Int?      @map("target_score")
+  targetDate   DateTime? @map("target_date")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  submissions Submission[]
+  flashcards  UserFlashcard[]
+
+  @@map("users")
+}
+
+model Exam {
+  id              String   @id @default(uuid())
+  title           String
+  slug            String   @unique
+  type            ExamType @default(FULL_MOCK)
+  totalQuestions  Int      @default(200) @map("total_questions")
+  durationMinutes Int      @default(120) @map("duration_minutes")
+  isPublished     Boolean  @default(false) @map("is_published")
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  sections    ExamSection[]
+  submissions Submission[]
+
+  @@map("exams")
+}
+
+model ExamSection {
+  id           String   @id @default(uuid())
+  examId       String   @map("exam_id")
+  partNumber   Int      @map("part_number") // 1 to 7
+  title        String
+  instructions String?
+  audioUrl     String?  @map("audio_url")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  exam      Exam       @relation(fields: [examId], references: [id], onDelete: Cascade)
+  questions Question[]
+
+  @@map("exam_sections")
+}
+
+model Question {
+  id             String     @id @default(uuid())
+  sectionId      String     @map("section_id")
+  partNumber     Int        @map("part_number")
+  questionNumber Int        @map("question_number") // 1 to 200
+  content        String? // Trích đoạn hoặc nội dung câu hỏi
+  audioUrl       String?    @map("audio_url")
+  imageUrl       String?    @map("image_url")
+  passageContext Json?      @map("passage_context") // Đoạn văn đọc cho Part 6, 7
+  difficulty     Difficulty @default(MEDIUM)
+  tags           String[]   @default([])
+  createdAt      DateTime   @default(now()) @map("created_at")
+
+  section     ExamSection          @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  options     QuestionOption[]
+  explanation QuestionExplanation?
+  answers     SubmissionAnswer[]
+
+  @@unique([sectionId, questionNumber])
+  @@index([partNumber])
+  @@map("questions")
+}
+
+model QuestionOption {
+  id         String  @id @default(uuid())
+  questionId String  @map("question_id")
+  optionKey  String  @map("option_key") // "A", "B", "C", "D"
+  content    String
+  isCorrect  Boolean @default(false) @map("is_correct")
+
+  question Question           @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers  SubmissionAnswer[]
+
+  @@unique([questionId, optionKey])
+  @@map("question_options")
+}
+
+model QuestionExplanation {
+  id                   String   @id @default(uuid())
+  questionId           String   @unique @map("question_id")
+  correctReason        String   @map("correct_reason")
+  incorrectReasons     Json?    @map("incorrect_reasons") // Phân tích từng đáp án sai & bẫy ETS
+  translatedText       String?  @map("translated_text")
+  vocabularyHighlights Json?    @map("vocabulary_highlights")
+  grammarRule          String?  @map("grammar_rule")
+  isAiGenerated        Boolean  @default(false) @map("is_ai_generated")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@map("question_explanations")
+}
+
+model Submission {
+  id               String           @id @default(uuid())
+  userId           String           @map("user_id")
+  examId           String           @map("exam_id")
+  listeningScore   Int?             @map("listening_score") // 5..495
+  readingScore     Int?             @map("reading_score") // 5..495
+  totalScore       Int?             @map("total_score") // 10..990
+  timeSpentSeconds Int              @default(0) @map("time_spent_seconds")
+  status           SubmissionStatus @default(IN_PROGRESS)
+  startedAt        DateTime         @default(now()) @map("started_at")
+  submittedAt      DateTime?        @map("submitted_at")
+
+  user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exam    Exam               @relation(fields: [examId], references: [id], onDelete: Cascade)
+  answers SubmissionAnswer[]
+
+  @@index([userId, examId])
+  @@map("submissions")
+}
+
+model SubmissionAnswer {
+  id               String  @id @default(uuid())
+  submissionId     String  @map("submission_id")
+  questionId       String  @map("question_id")
+  selectedOptionId String? @map("selected_option_id")
+  isCorrect        Boolean @default(false) @map("is_correct")
+  timeSpentSeconds Int?    @map("time_spent_seconds")
+
+  submission     Submission      @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  question       Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedOption QuestionOption? @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
+
+  @@unique([submissionId, questionId])
+  @@map("submission_answers")
+}
+
+model UserFlashcard {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  word          String
+  ipa           String?
+  partOfSpeech  String?  @map("part_of_speech")
+  meaningVi     String   @map("meaning_vi")
+  exampleEn     String?  @map("example_en")
+  exampleVi     String?  @map("example_vi")
+  srsInterval   Int      @default(1) @map("srs_interval") // Tính theo ngày
+  srsRepetition Int      @default(0) @map("srs_repetition")
+  srsEaseFactor Float    @default(2.5) @map("srs_ease_factor")
+  nextReviewAt  DateTime @default(now()) @map("next_review_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, nextReviewAt])
+  @@map("user_flashcards")
+}
