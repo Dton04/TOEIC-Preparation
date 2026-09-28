@@ -17,6 +17,7 @@ backend/coverage/
 .env.production
 frontend/.env*.local
 backend/.env
+backend/src/generated/prisma
 
 # Logs
 npm-debug.log*
