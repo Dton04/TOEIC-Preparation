@@ -10,31 +10,62 @@ import { SkillsAnalytics } from '@/components/dashboard/skills-analytics';
 import { RecommendedSection } from '@/components/dashboard/recommended-cards';
 import { AuthModal } from '@/components/auth/auth-modal';
 
+interface UserProfile {
+  id?: string;
+  fullName: string;
+  email?: string;
+  targetScore?: number;
+  role?: string;
+}
+
 export default function DashboardPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [user, setUser] = useState<{
-    id?: string;
-    fullName: string;
-    email?: string;
-    targetScore?: number;
-  } | null>({
-    fullName: 'Minh Nguyễn',
-    targetScore: 700,
-    email: 'minh.nguyen@example.com',
-  });
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [isClientLoaded, setIsClientLoaded] = useState(false);
 
-  // Check saved user in localStorage on mount
+  // Khôi phục trạng thái user hoặc tiếp nhận token từ Google OAuth Callback
   useEffect(() => {
     try {
+      // 1. Tiếp nhận token từ Google OAuth redirect nếu có
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+        const refreshToken = params.get('refreshToken');
+        const userParam = params.get('user');
+
+        if (token && refreshToken && userParam) {
+          localStorage.setItem('accessToken', token);
+          localStorage.setItem('refreshToken', refreshToken);
+          localStorage.setItem('user', userParam);
+          setUser(JSON.parse(userParam));
+
+          // Xóa search params trên URL để thanh địa chỉ sạch sẽ
+          window.history.replaceState({}, document.title, window.location.pathname);
+          setIsClientLoaded(true);
+          return;
+        }
+      }
+
+      // 2. Khôi phục từ localStorage nếu đã đăng nhập trước đó
       const savedUser = localStorage.getItem('user');
       if (savedUser) {
         setUser(JSON.parse(savedUser));
       }
     } catch {
       // ignore
+    } finally {
+      setIsClientLoaded(true);
     }
   }, []);
+
+  // Xử lý đăng xuất tài khoản
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    setUser(null);
+  };
 
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100">
@@ -56,11 +87,12 @@ export default function DashboardPage() {
 
       {/* Main Content Area */}
       <div className="flex flex-1 flex-col overflow-y-auto min-w-0">
-        {/* Topbar */}
+        {/* Topbar: Hiển thị Đăng nhập hoặc Menu Profile + Đăng xuất */}
         <Topbar
-          user={user}
+          user={isClientLoaded ? user : null}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
           onOpenAuthModal={() => setAuthModalOpen(true)}
+          onLogout={handleLogout}
         />
 
         {/* Dashboard Scroll Body */}
@@ -68,11 +100,13 @@ export default function DashboardPage() {
           <div className="mx-auto flex max-w-7xl flex-col gap-6">
             {/* 1. Welcome Banner */}
             <WelcomeBanner
-              userName={user?.fullName?.split(' ').pop() || 'Minh'}
+              userName={user?.fullName}
               progressPercent={78}
+              isLoggedIn={!!user}
               onStartExam={() => {
                 alert('Khởi động bài thi thử ETS Full Mock 200 câu!');
               }}
+              onOpenAuthModal={() => setAuthModalOpen(true)}
             />
 
             {/* 2. Key Stats Row */}

@@ -67,26 +67,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  const handleGoogleDemo = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Demo Google Mock/Credential payload
-      const mockGoogleUser = {
-        id: 'usr_google_demo_' + Date.now().toString(36),
-        email: 'demo.student@gmail.com',
-        fullName: 'Minh Nguyễn (Google)',
-        role: 'STUDENT',
-        targetScore: 750,
-      };
-      localStorage.setItem('user', JSON.stringify(mockGoogleUser));
-      onSuccess(mockGoogleUser);
-      onClose();
-    } catch (err: any) {
-      setError('Đăng nhập Google thất bại');
-    } finally {
-      setLoading(false);
-    }
+  const handleGoogleLogin = () => {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    // Chuyển hướng trực tiếp đến luồng Google OAuth của Backend
+    window.location.href = `${baseUrl}/auth/google`;
   };
 
   return (
@@ -119,7 +103,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         <div className="mt-6 flex flex-col gap-3">
           <button
             type="button"
-            onClick={handleGoogleDemo}
+            onClick={handleGoogleLogin}
             className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.99] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700/60"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24">

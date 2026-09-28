@@ -270,6 +270,58 @@ export class AuthService {
   }
 
   /**
+   * Xác thực hoặc tạo mới tài khoản người dùng từ OAuth profile (Google)
+   */
+  async validateOAuthUser(profile: {
+    email: string;
+    fullName: string;
+    avatarUrl?: string | null;
+  }): Promise<AuthResponse> {
+    const email = profile.email.toLowerCase().trim();
+    let user = await this.prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      const randomPassword = Math.random().toString(36).slice(-12) + Date.now();
+      const passwordHash = await bcrypt.hash(randomPassword, 10);
+
+      user = await this.prisma.user.create({
+        data: {
+          email,
+          passwordHash,
+          fullName: profile.fullName || email.split('@')[0],
+          avatarUrl: profile.avatarUrl || null,
+          role: Role.STUDENT,
+          targetScore: 700,
+        },
+      });
+    } else if (profile.avatarUrl && !user.avatarUrl) {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { avatarUrl: profile.avatarUrl },
+      });
+    }
+
+    const tokens = await this.generateTokens({
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      fullName: user.fullName,
+    });
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+        avatarUrl: user.avatarUrl,
+        targetScore: user.targetScore,
+      },
+      tokens,
+    };
+  }
+
+  /**
    * Sinh cặp Access Token (15m) và Refresh Token (7d)
    */
   private async generateTokens(payload: {
