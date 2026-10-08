@@ -24,7 +24,8 @@ Standardize queue names across the application:
 
 Install necessary packages in `backend`:
 ```bash
-npm install @nestjs/bullmq bullmq
+npm install @nestjs/bullmq bullmq ioredis
+npm install -D @types/ioredis
 ```
 
 In `backend/src/queues/queue.module.ts`:
