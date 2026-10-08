@@ -1,6 +1,18 @@
 import { PrismaClient, Role, ExamType, Difficulty } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 
-const prisma = new PrismaClient();
+const connectionString = process.env.DATABASE_URL || '';
+const ssl =
+  connectionString.includes('sslmode=require') ||
+  connectionString.includes('ssl=true') ||
+  connectionString.includes('db.prisma.io')
+    ? { rejectUnauthorized: false }
+    : undefined;
+
+const pool = new Pool({ connectionString, ssl });
+const adapter = new PrismaPg(pool as any);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log('🌱 Starting database seeding...');
